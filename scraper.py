@@ -1,3 +1,4 @@
+from gettext import find
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -49,6 +50,56 @@ def get_athletes():
 
         count += 1
 
+
+def find_field(driver, field):
+
+    bio_path = '/html/body/div[1]/main/div[3]/div[2]/div[1]/div[3]/div/div[1]/div/div[2]'
+
+    split_patern = '•'
+
+    field_info = ''
+
+    for i in range(6):
+
+        try:
+            title = driver.find_element(By.XPATH, f'/html/body/div[1]/main/div[3]/div[2]/div[1]/div[3]/div/div[{i+1}]/div/div[1]/h3').text
+        except Exception as e:
+
+            print(e)
+            continue
+
+        if title == 'Biography' and field == 'Biography':
+
+            info = driver.find_element(By.XPATH, bio_path).text.replace('\n', '- ')
+
+            field_info = info
+
+            break
+
+        elif title == field:
+
+            info = driver.find_element(By.XPATH, f'/html/body/div[1]/main/div[3]/div[2]/div[1]/div[3]/div/div[{i+1}]/div/p').text.split(split_patern)
+
+            for item in info:
+
+                field_info += f'{item}, '
+
+            break
+
+        else:
+
+            continue
+
+    if field_info:
+
+        return field_info
+
+    else:
+
+        return 'Not available'
+
+
+
 def get_profiles_info(base_url : str, codes : list):
 
     driver = webdriver.Chrome()
@@ -61,54 +112,101 @@ def get_profiles_info(base_url : str, codes : list):
   
         driver.execute_script("window.open(arguments[0], 'secondtab');", f'{base_url}profile/{code}')
 
-        split_patern = '•'
+        driver.switch_to.window("secondtab")
 
-        title_path = 'div/h3'
-
-        # Getting the information about the athletes
-
-        # Reminder: To retrieve all the information possible loop through all the info items,
-        # then check if the title of the field fits the field you're analizing by changing the 
-        # last part of the element's xpath. This way the program will be able to work with all
-        # kind of profiles, from complete ones to totally incomplete ones.
-        # Then save all the information in json.
+        element = WebDriverWait(driver, 15).until(
+                    EC.presence_of_element_located((By.XPATH, '//*[@id="__next"]/main/div[3]/div[2]/div[1]/div[1]/div[1]/span/h1/div[1]'))
+            )
 
         name = driver.find_element(By.XPATH, '//*[@id="__next"]/main/div[3]/div[2]/div[1]/div[1]/div[1]/span/h1/div[1]').text
 
-        twiter_followers = driver.find_element(By.XPATH, '/html/body/div[1]/main/div[3]/div[2]/div[1]/div[1]/div[1]/div[2]/a[1]/div/p').text
+        try:
 
-        instagram_followers = driver.find_element(By.XPATH, '/html/body/div[1]/main/div[3]/div[2]/div[1]/div[1]/div[1]/div[2]/a[2]/div/p').text
+            twitter_followers = driver.find_element(By.XPATH, '/html/body/div[1]/main/div[3]/div[2]/div[1]/div[1]/div[1]/div[2]/a[1]/div/p').text
 
-        afiliations_list = driver.find_element(By.XPATH, '/html/body/div[1]/main/div[3]/div[2]/div[1]/div[3]/div/div[2]/div/p').text.split(split_patern)
+        except Exception as e:
 
-        afiliations = ''
+            print(e)
 
-        for afiliation in afiliations_list:
+            twiter_followers = 'Not available'
 
-            afiliations += f'{afiliation}, '
+        try:
 
-        accolades_list = driver.find_element(By.XPATH, '/html/body/div[1]/main/div[3]/div[2]/div[1]/div[3]/div/div[3]/div/p').text.split(split_patern)
+            instagram_followers = driver.find_element(By.XPATH, '/html/body/div[1]/main/div[3]/div[2]/div[1]/div[1]/div[1]/div[2]/a[2]/div/p').text
 
-        accolades = ''
+        except Exception as e:
 
-        for accolade in accolades_list:
+            print(e)
 
-            accolades += f'{accolade}, '
+            instagram_followers = 'Not available'
 
-        bg_list = driver.find_element(By.XPATH, '/html/body/div[1]/main/div[3]/div[2]/div[1]/div[3]/div/div[5]/div/p').text.split(split_patern)
+        bio = find_field(driver, 'Biography')
 
-        bg = ''
+        afiliations = find_field(driver, 'Affiliations')
 
-        for item in bg_list:
+        accolades = find_field(driver, 'Accolades')
 
-            bg += f'{item}, '
+        bg = find_field(driver, 'Background')
 
-        location = driver.find_element(By.XPATH, '/html/body/div[1]/main/div[3]/div[2]/div[1]/div[3]/div/div[4]/div/p').text
+        location = find_field(driver, 'Location')
 
-        hometown = driver.find_element(By.XPATH, '/html/body/div[1]/main/div[3]/div[2]/div[1]/div[3]/div/div[6]/div/p').text
+        hometown = find_field(driver, 'Hometown')
+
+        # Products they offer:
+
+        shoutout = driver.find_element(By.XPATH, '/html/body/div[1]/main/div[3]/div[2]/div[2]/div[1]/div[1]/div/div/div[2]/div/p[2]').replace('+', '')
+
+        post = driver.find_element(By.XPATH, '/html/body/div[1]/main/div[3]/div[2]/div[2]/div[1]/div[2]/div[1]/div/div[2]/div/p[2]').replace('+', '')
+
+        appearance = driver.find_element(By.XPATH, '/html/body/div[1]/main/div[3]/div[2]/div[2]/div[1]/div[2]/div[2]/div/div[2]/div/p[2]').replace('+', '')
+
+        autograph = driver.find_element(By.XPATH, '/html/body/div[1]/main/div[3]/div[2]/div[2]/div[1]/div[2]/div[3]/div/div[2]/div/p[2]').replace('+', '')
+        
+        try:
+
+            pitch_anything = driver.find_element(By.XPATH, '/html/body/div[1]/main/div[3]/div[2]/div[2]/div[1]/div[2]/div[4]/div/div[2]/div/p[2]').replace('+', '')
+
+        except Exception as e:
+
+            print(e)
+
+            pitch_anything = 'Not available'
+
+        athlete_info = {
+            'Name' : name,
+            'Twitter followers' : twitter_followers,
+            'Instagram followers' : instagram_followers,
+            'Biography' : bio,
+            'Afiliations' : afiliations,
+            'Accolades' : accolades,
+            'Background' : bg,
+            'Location' : location,
+            'Hometown' : hometown,
+            'Shoutout - cost' : shoutout,
+            'Post - cost' : post,
+            'Appearance - cost' : appearance,
+            'Autograph - cost' : autograph,
+            'Pitch anything - cost' : pitch_anything 
+        }
+
+        with open('athletes.json') as f:
+
+            data = json.load(f)
+
+        with open('athletes.json', 'w') as f:
+
+            data['athletes'].append(athlete_info)
+
+        driver.close()
+
+        driver.switch_to.window(main_window)
+
+        WebDriverWait(driver, 15).until(EC.number_of_windows_to_be(1))
+
+        
+
 
 
 if __name__ == '__main__':
 
-    get_athletes()
     get_profiles_info('https://opendorse.com/')
