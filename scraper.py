@@ -1,4 +1,4 @@
-from gettext import find
+from cgitb import text
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -106,6 +106,18 @@ def get_profiles_info(base_url : str, codes : list):
 
     driver.get(base_url)
 
+    sports_list = ['Football', 'Softball', 'Baseball', 'Marathon',
+                   'Fencing', 'Bowling', 'Dance', 'Field Hockey',
+                   'Gymnastics', 'Rowing', 'Cheerleading', 'Golf',
+                   'Wrestling', 'Ice Hockey', 'Ice Hockey', 'Soccer',
+                   'Basketball', 'Rifle', 'Flag Football', 'Beach Volleyball',
+                   'Diving', 'Skiing', 'Water Polo', 'Lacrosse',
+                   'Tennis', 'Swimming', 'Cross Country',
+                   'Volleyball', 'Track & Field']
+
+    count = 0
+    file_num = 0
+
     for code in codes:
 
         main_window = driver.current_window_handle
@@ -115,10 +127,30 @@ def get_profiles_info(base_url : str, codes : list):
         driver.switch_to.window("secondtab")
 
         element = WebDriverWait(driver, 15).until(
-                    EC.presence_of_element_located((By.XPATH, '//*[@id="__next"]/main/div[3]/div[2]/div[1]/div[1]/div[1]/span/h1/div[1]'))
+                    EC.presence_of_element_located((By.XPATH, '/html/body/div[1]/main/div[3]/div[2]/div[1]/div[1]/div[1]/span/h1/div[1]'))
             )
 
-        name = driver.find_element(By.XPATH, '//*[@id="__next"]/main/div[3]/div[2]/div[1]/div[1]/div[1]/span/h1/div[1]').text
+        try:
+
+            name = driver.find_element(By.XPATH, '/html/body/div[1]/main/div[3]/div[2]/div[1]/div[1]/div[1]/span/h1/div[1]').text
+                                            
+        except Exception as e:
+
+            print(e)
+
+            name = driver.find_element(By.XPATH, '/html/body/div/main/div[3]/div/div[1]/div[1]/div[1]/span/h1/div[1]').text
+
+        # To find the sport: "p[color='#5a6979']", first element, split by '•' and select first element.
+
+        sport = driver.find_element(By.XPATH, "//p[@color='#5a6979']").text.split(' • ')
+
+        if sport[0] in sports_list:
+
+            sport = sport[0]
+
+        else:
+
+            sport = 'Not available'
 
         try:
 
@@ -154,17 +186,17 @@ def get_profiles_info(base_url : str, codes : list):
 
         # Products they offer:
 
-        shoutout = driver.find_element(By.XPATH, '/html/body/div[1]/main/div[3]/div[2]/div[2]/div[1]/div[1]/div/div/div[2]/div/p[2]').replace('+', '')
+        shoutout = driver.find_element(By.XPATH, '/html/body/div[1]/main/div[3]/div[2]/div[2]/div[1]/div[1]/div/div/div[2]/div/p[2]').text.replace('+', '')
 
-        post = driver.find_element(By.XPATH, '/html/body/div[1]/main/div[3]/div[2]/div[2]/div[1]/div[2]/div[1]/div/div[2]/div/p[2]').replace('+', '')
+        post = driver.find_element(By.XPATH, '/html/body/div[1]/main/div[3]/div[2]/div[2]/div[1]/div[2]/div[1]/div/div[2]/div/p[2]').text.replace('+', '')
 
-        appearance = driver.find_element(By.XPATH, '/html/body/div[1]/main/div[3]/div[2]/div[2]/div[1]/div[2]/div[2]/div/div[2]/div/p[2]').replace('+', '')
+        appearance = driver.find_element(By.XPATH, '/html/body/div[1]/main/div[3]/div[2]/div[2]/div[1]/div[2]/div[2]/div/div[2]/div/p[2]').text.replace('+', '')
 
-        autograph = driver.find_element(By.XPATH, '/html/body/div[1]/main/div[3]/div[2]/div[2]/div[1]/div[2]/div[3]/div/div[2]/div/p[2]').replace('+', '')
+        autograph = driver.find_element(By.XPATH, '/html/body/div[1]/main/div[3]/div[2]/div[2]/div[1]/div[2]/div[3]/div/div[2]/div/p[2]').text.replace('+', '')
         
         try:
 
-            pitch_anything = driver.find_element(By.XPATH, '/html/body/div[1]/main/div[3]/div[2]/div[2]/div[1]/div[2]/div[4]/div/div[2]/div/p[2]').replace('+', '')
+            pitch_anything = driver.find_element(By.XPATH, '/html/body/div[1]/main/div[3]/div[2]/div[2]/div[1]/div[2]/div[4]/div/div[2]/div/p[2]').text.replace('+', '')
 
         except Exception as e:
 
@@ -174,6 +206,7 @@ def get_profiles_info(base_url : str, codes : list):
 
         athlete_info = {
             'Name' : name,
+            'Sport' : sport,
             'Twitter followers' : twitter_followers,
             'Instagram followers' : instagram_followers,
             'Biography' : bio,
@@ -189,13 +222,24 @@ def get_profiles_info(base_url : str, codes : list):
             'Pitch anything - cost' : pitch_anything 
         }
 
-        with open('athletes.json') as f:
+        if count > 2500:
+
+            file_num += 1
+            count = 0
+
+        print(athlete_info)
+
+        with open(f'athletes({file_num}).json') as f:
 
             data = json.load(f)
 
-        with open('athletes.json', 'w') as f:
+        with open(f'athletes({file_num}).json', 'w') as f:
 
             data['athletes'].append(athlete_info)
+
+            json.dump(data, f, indent=2)
+
+        count += 1
 
         driver.close()
 
@@ -209,4 +253,20 @@ def get_profiles_info(base_url : str, codes : list):
 
 if __name__ == '__main__':
 
-    get_profiles_info('https://opendorse.com/')
+    athletes_codes = []
+
+    for i in range(4):
+
+        with open(f'Athletes_code({i}).json') as f:
+
+            data = json.load(f)
+
+        for ath in data['Codes']:
+
+            athletes_codes.append(ath)
+
+
+    print(f'number of athletes: {len(athletes_codes)}')
+
+    get_profiles_info('https://opendorse.com/', athletes_codes)
+
