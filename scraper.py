@@ -1,4 +1,5 @@
-from cgitb import text
+from shutil import ExecError
+from time import sleep
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -53,7 +54,7 @@ def get_athletes():
 
 def find_field(driver, field):
 
-    bio_path = '/html/body/div[1]/main/div[3]/div[2]/div[1]/div[3]/div/div[1]/div/div[2]'
+    bio_path = ['/html/body/div[1]/main/div[3]/div[2]/div[1]/div[3]/div/div[1]/div/div[2]', '/html/body/div[1]/main/div[3]/div/div[1]/div[3]/div/div[1]/div/div[2]']
 
     split_patern = '•'
 
@@ -70,7 +71,7 @@ def find_field(driver, field):
 
         if title == 'Biography' and field == 'Biography':
 
-            info = driver.find_element(By.XPATH, bio_path).text.replace('\n', '- ')
+            info = driver.find_element(By.XPATH, bio_path[0]).text.replace('\n', '- ')
 
             field_info = info
 
@@ -126,9 +127,34 @@ def get_profiles_info(base_url : str, codes : list):
 
         driver.switch_to.window("secondtab")
 
-        element = WebDriverWait(driver, 15).until(
-                    EC.presence_of_element_located((By.XPATH, '/html/body/div[1]/main/div[3]/div[2]/div[1]/div[1]/div[1]/span/h1/div[1]'))
+        try: 
+
+            element = WebDriverWait(driver, 3).until(
+                    EC.presence_of_element_located((By.XPATH, '/html/body/div[1]/main/div[3]/div[2]/div[2]/div[1]/div[2]/div[3]/div/div[2]/div/p[2]'))
             )
+
+        except Exception as e:
+
+            print(e)
+
+            with open('Errors.json') as f:
+
+                data = json.load(f)
+
+            with open('Errors.json', 'w') as f:
+
+                data['Codes'].append(code)
+
+                json.dump(data, f, indent=4)
+
+                print('')
+                print(code)
+                print('')
+
+            continue
+
+
+        sleep(1)
 
         try:
 
@@ -141,36 +167,22 @@ def get_profiles_info(base_url : str, codes : list):
             name = driver.find_element(By.XPATH, '/html/body/div/main/div[3]/div/div[1]/div[1]/div[1]/span/h1/div[1]').text
 
         # To find the sport: "p[color='#5a6979']", first element, split by '•' and select first element.
+        
+        try:
 
-        sport = driver.find_element(By.XPATH, "//p[@color='#5a6979']").text.split(' • ')
+            sport = driver.execute_script("""return document.querySelector("p[color='#5a6979']").textContent""").split(' • ')
 
-        if sport[0] in sports_list:
+            if any(sp in sport[0] for sp in sports_list):
 
-            sport = sport[0]
+                sport = sport[0]
 
-        else:
+            else:
+
+                sport = 'Not available'
+
+        except Exception:
 
             sport = 'Not available'
-
-        try:
-
-            twitter_followers = driver.find_element(By.XPATH, '/html/body/div[1]/main/div[3]/div[2]/div[1]/div[1]/div[1]/div[2]/a[1]/div/p').text
-
-        except Exception as e:
-
-            print(e)
-
-            twiter_followers = 'Not available'
-
-        try:
-
-            instagram_followers = driver.find_element(By.XPATH, '/html/body/div[1]/main/div[3]/div[2]/div[1]/div[1]/div[1]/div[2]/a[2]/div/p').text
-
-        except Exception as e:
-
-            print(e)
-
-            instagram_followers = 'Not available'
 
         bio = find_field(driver, 'Biography')
 
@@ -207,8 +219,6 @@ def get_profiles_info(base_url : str, codes : list):
         athlete_info = {
             'Name' : name,
             'Sport' : sport,
-            'Twitter followers' : twitter_followers,
-            'Instagram followers' : instagram_followers,
             'Biography' : bio,
             'Afiliations' : afiliations,
             'Accolades' : accolades,
